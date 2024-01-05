@@ -4,15 +4,17 @@ var router = express.Router();
 var { getUserGames, createGame } = require('../controller/finishedGame.controller')
 var { verifyToken } = require('../controller/auth.controller');
 const { sendMessage, getMessages, deleteMessages } = require('../controller/message.controller');
-const { createActiveGame, getActiveGame, getLastMove } = require('../controller/activeGame.controller');
+const { createActiveGame, getActiveGame, getLastMove, updateActiveGame } = require('../controller/activeGame.controller');
 const { getReceiverRequestList, getSenderRequestList, getRequest, createRequest, 
     requestResponse } = require('../controller/request.controller');
 
 router.post('/', getUserGames);
 router.post('/new', createGame);
+
+router.get('/new/active', verifyToken, getActiveGame)
 router.post('/new/active', verifyToken, createActiveGame)
 router.get('/new/active/:gameID', verifyToken, getLastMove)
-router.get('/new/active', verifyToken, getActiveGame)
+router.post('/new/active/:gameID', verifyToken, updateActiveGame)
 
 router.get('/request/receive', verifyToken, getReceiverRequestList)
 router.get('/request/send', verifyToken, getSenderRequestList)
