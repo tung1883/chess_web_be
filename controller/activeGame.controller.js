@@ -92,8 +92,8 @@ handleGameFinished = ({ gameID, gameResult, record, timer }) => {
     .then(() => { 
         return setTimeout(() => { 
             queryExec(`delete from active_game where gameID=?`, gameID)
-        }
-    , 30 * 1000) }) 
+        }, 3000) }
+    ) 
 }
 
 exports.getActiveGame = (req, res) => {
