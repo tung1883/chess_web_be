@@ -7,23 +7,7 @@ const bcrypt = require('bcrypt')
 const queryExec = db.queryExec
 const errorHandler = require('./error.controller')
 
-exports.signup = (req, res) => {
-    const user = req.body?.user
-    const pwd = req.body?.pwd
-
-    if (!user || !pwd) return res.status(400).send('user or pwd is not specified')
-
-    const hashedPwd = bcrypt.hashSync(pwd, 8)
-    return queryExec('insert into user(user, pwd) values(?, ?)', [user, hashedPwd])
-    .then(() => {
-
-    })
-    .catch((err) => {
-        console.log(err)
-        if (err.errno === 1062) return res.status(400).send('user is already taken')
-        res.sendStatus(400)
-    })
-}
+const SESSION_TIME = 2 * 60 * 60 * 1000
 
 exports.signin = (req, res) => {
     const user = req.body?.user
@@ -32,9 +16,7 @@ exports.signin = (req, res) => {
     queryExec('select userID, pwd from user where user=?', [user])
     .then((result) => {
         if (result.length === 0 || !bcrypt.compareSync(pwd, result[0].pwd)) {
-            return res.status(401).send({
-                message: "Invalid Username or Password"
-            })
+            return res.status(401).send("Invalid username or password")
         }
 
         const userID = result[0].userID
@@ -53,22 +35,22 @@ exports.signin = (req, res) => {
             httpOnly: true, 
             secure: true, 
             sameSite: 'Strict',
-            maxAge: 15 * 60 * 1000
+            maxAge: SESSION_TIME
         })
         res.cookie('token_payload', tokenPayload, {
             secure: true, 
             sameSite: 'Strict',
-            maxAge: 15 * 60 * 1000
+            maxAge: SESSION_TIME
         })
         res.cookie('user', user, {
             secure: true, 
             sameSite: 'Strict',
-            maxAge: 15 * 60 * 1000
+            maxAge: SESSION_TIME
         })
         res.cookie('userID', userID, {
             secure: true, 
             sameSite: 'Strict',
-            maxAge: 15 * 60 * 1000
+            maxAge: SESSION_TIME
         })
 
         return res.send({
@@ -77,10 +59,60 @@ exports.signin = (req, res) => {
 
     })
     .catch((err) => {
-        console.log(err)
         res.status(400).send({
             error: err
         })
+    })
+}
+
+exports.signup = (req, res) => {
+    const user = req.body?.user
+    const pwd = req.body?.pwd
+
+    if (!user || !pwd) return res.status(400).send('user or pwd is not specified')
+
+    const hashedPwd = bcrypt.hashSync(pwd, 8)
+
+    return queryExec('select user from user where user=?', [user])
+    .then((result) => {
+        if (result.length !== 0) {
+            throw Error('User is already taken')
+        }
+
+        return queryExec('insert into user(user, pwd) values(?, ?)', [user, hashedPwd])
+    })
+    .then(() => {
+        return res.send({
+            message: "Sign up sucessfully"           
+        })
+    })
+    .catch((err) => {
+        res.status(400).send(err.message)
+    })
+}
+
+exports.resetPassword = (req, res) => {
+    const user = req.body?.user
+    const pwd = req.body?.pwd
+
+    if (!user || !pwd) return res.status(400).send('user or pwd is not specified')
+
+    const hashedPwd = bcrypt.hashSync(pwd, 8)
+    return queryExec('select user from user where user=?', [user])
+    .then((result) => {
+        if (result.length === 0) {
+            throw Error('User does not exist')
+        }
+
+        return queryExec('update user set pwd=? where user=?', [hashedPwd, user])
+    })
+    .then(() => {
+        res.send({
+            message: "Reset password sucessfully"           
+        })
+    })
+    .catch((err) => { 
+        res.status(400).send(err.message)
     })
 }
 
@@ -101,8 +133,7 @@ exports.verifyToken = (req, res, next) => {
         res.locals.userID = decoded.userID
         next()
     } catch (e) {
-        console.log(e)
-        return res.status(403).send({
+        res.status(403).send({
             message: 'Error when verifying authentication token...'
         })
     }
