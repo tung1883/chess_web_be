@@ -5,8 +5,7 @@ var { getUserGames, createGame } = require('../controller/finishedGame.controlle
 var { verifyToken } = require('../controller/auth.controller');
 const { sendMessage, getMessages, deleteMessages } = require('../controller/message.controller');
 const { createActiveGame, getActiveGame, getLastMove, updateActiveGame } = require('../controller/activeGame.controller');
-const { getReceiverRequestList, getSenderRequestList, getRequest, createRequest, 
-    requestResponse } = require('../controller/request.controller');
+const { getReceiverRequestList, getRequest, createRequest, requestResponse, getUserRequest} = require('../controller/request.controller');
 
 router.post('/', getUserGames);
 router.post('/new', createGame);
@@ -17,7 +16,7 @@ router.get('/new/active/:gameID', verifyToken, getLastMove)
 router.post('/new/active/:gameID', verifyToken, updateActiveGame)
 
 router.get('/request/receive', verifyToken, getReceiverRequestList)
-router.get('/request/send', verifyToken, getSenderRequestList)
+router.get('/request/send', verifyToken, getUserRequest)
 router.get('/request/:reqID', verifyToken, getRequest)
 router.post('/request', verifyToken, createRequest)
 router.post('/request/res', verifyToken, requestResponse)

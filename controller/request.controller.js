@@ -7,10 +7,20 @@ exports.getRequest = (req, res) => {
     queryExec('select gameID from request where reqID=?'
         , [reqID])
     .then(async (result) => {
+        if (result.length === 0) {
+            return res.status(200).send({requestDeleted: true})
+        }
+
         gameID = result[0]?.gameID
 
         if (gameID) {
             let startedTimeQuery = await queryExec('select started_time from active_game where gameID=?', [gameID])
+
+            // game is not in the active_game table
+            if (startedTimeQuery.length === 0) {
+                throw Error("Game ID is not in the active game table")
+            }
+
             res.status(200).send({
                 gameID, startedTime: startedTimeQuery[0]?.started_time
             })
@@ -68,7 +78,7 @@ exports.createRequest = (req, res) => {
 exports.requestResponse = (req, res) => {
     const userID = res.locals.userID
     const { reqID, action } = req.body //0: decline, 1: accept
-    
+
     if (!reqID || action === null) {
         return res.status(400).send({
             msg: 'Request ID and action data is required'
@@ -77,7 +87,11 @@ exports.requestResponse = (req, res) => {
 
     queryExec('select receiver, wp, bp from request where reqID=?', reqID)
     .then((result) => {
-        if (userID != result[0].wp && userID != result[0].bp) {
+        if (!result || result.length === 0) {
+            return res.send("Request is deleted")
+        }
+
+        if (userID != result[0]?.wp && userID != result[0]?.bp) {
             throw new Error("User is not authorized to update the request")
         }
         
@@ -152,16 +166,17 @@ exports.getReceiverRequestList = (req, res) => {
     })
 }
 
-exports.getSenderRequestList = (req, res) => {
+exports.getUserRequest = (req, res) => {
     const userID = res.locals?.userID
     queryExec('select reqID, receiver, wp, wu, bp, bu, timer from request where wp=? or bp=?', [userID, userID])
     .then((result) => {
-        const requestList = []
-        result.map((request) => requestList.push(request))
-
-        return res.send({
-            requestList: requestList
+        res.send({
+            request: result[result.length - 1]
         })
+
+        for (let i = 0; i < result.length - 2; i++) {
+            queryExec('delete from request where reqID = ?', result[i].reqID)
+        }
     })
     .catch((err) => {
         console.log(err)
